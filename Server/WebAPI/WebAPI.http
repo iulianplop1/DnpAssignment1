@@ -1,0 +1,92 @@
+@host = http://localhost:5080
+# Set these to the IDs returned by the create requests.
+@userId = 1
+@postId = 1
+@commentId = 1
+
+### Create a user (the response must not contain the password)
+POST {{host}}/Users
+Content-Type: application/json
+
+{
+  "userName": "alice",
+  "password": "1234"
+}
+
+### List users, optionally filtering by part of their name
+GET {{host}}/Users?userNameContains=ali
+
+### Get a user
+GET {{host}}/Users/{{userId}}
+
+### Update a user
+PUT {{host}}/Users/{{userId}}
+Content-Type: application/json
+
+{
+  "userName": "alice",
+  "password": "5678"
+}
+
+### Create a post
+POST {{host}}/Posts
+Content-Type: application/json
+
+{
+  "title": "Learning C#",
+  "body": "What is your favourite part of C#?",
+  "userId": {{userId}}
+}
+
+### List posts, combining the title and author filters
+GET {{host}}/Posts?titleContains=learning&userId={{userId}}
+
+### Get a post
+GET {{host}}/Posts/{{postId}}
+
+### Update a post's content
+PATCH {{host}}/Posts/{{postId}}
+Content-Type: application/json
+
+{
+  "title": "Learning async",
+  "body": "We are learning async and await."
+}
+
+### Add a comment to a post
+POST {{host}}/Posts/{{postId}}/Comments
+Content-Type: application/json
+
+{
+  "body": "Remember to use await!",
+  "userId": {{userId}}
+}
+
+### List comments belonging to a post
+GET {{host}}/Posts/{{postId}}/Comments
+
+### List comments, combining the author and post filters
+GET {{host}}/Comments?userId={{userId}}&postId={{postId}}
+
+### Get a comment
+GET {{host}}/Comments/{{commentId}}
+
+### Update a comment's body
+PATCH {{host}}/Comments/{{commentId}}
+Content-Type: application/json
+
+{
+  "body": "Updated comment."
+}
+
+### A missing comment should return 404
+GET {{host}}/Comments/2147483647
+
+### Delete the comment before deleting its post
+DELETE {{host}}/Comments/{{commentId}}
+
+### Delete the post before deleting its author
+DELETE {{host}}/Posts/{{postId}}
+
+### Delete the user
+DELETE {{host}}/Users/{{userId}}
