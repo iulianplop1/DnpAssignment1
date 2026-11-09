@@ -1,0 +1,62 @@
+body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    line-height: 1.5;
+    color: #222;
+}
+
+header {
+    background: #eef2f5;
+    border-bottom: 1px solid #d5dce2;
+}
+
+nav, main {
+    max-width: 48rem;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+}
+
+a {
+    color: #174e85;
+}
+
+form {
+    display: grid;
+    gap: 0.5rem;
+    max-width: 32rem;
+}
+
+input, textarea, button {
+    font: inherit;
+    padding: 0.35rem 0.5rem;
+}
+
+textarea {
+    min-height: 5rem;
+}
+
+button {
+    width: fit-content;
+    cursor: pointer;
+}
+
+article {
+    border-top: 1px solid #d5dce2;
+    padding: 0.75rem 0;
+}
+
+.body-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.error {
+    color: #9e2525;
+}

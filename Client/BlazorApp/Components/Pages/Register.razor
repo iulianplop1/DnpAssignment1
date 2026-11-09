@@ -1,0 +1,47 @@
+@page "/register"
+@inject IUserService Users
+@inject NavigationManager Navigation
+
+<PageTitle>Create account</PageTitle>
+<h1>Create account</h1>
+
+<form @onsubmit="RegisterAsync" @onsubmit:preventDefault>
+    <label for="user-name">User name</label>
+    <input id="user-name" autocomplete="username" @bind="userName" required />
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="new-password" @bind="password" required />
+
+    @if (error is not null)
+    {
+        <p class="error" role="alert">@error</p>
+    }
+
+    <button type="submit" disabled="@saving">Create account</button>
+</form>
+
+@code {
+    private string userName = "";
+    private string password = "";
+    private string? error;
+    private bool saving;
+
+    private async Task RegisterAsync()
+    {
+        saving = true;
+        error = null;
+
+        try
+        {
+            await Users.AddUserAsync(new CreateUserDto { UserName = userName, Password = password });
+            Navigation.NavigateTo("login");
+        }
+        catch (HttpRequestException exception)
+        {
+            error = exception.Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

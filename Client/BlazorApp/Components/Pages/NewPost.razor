@@ -1,0 +1,61 @@
+@page "/posts/new"
+@attribute [Authorize]
+@inject IPostService Posts
+@inject AuthenticationStateProvider Authentication
+@inject NavigationManager Navigation
+
+<PageTitle>New post</PageTitle>
+<h1>New post</h1>
+
+<form @onsubmit="CreatePostAsync" @onsubmit:preventDefault>
+    <label for="title">Title</label>
+    <input id="title" @bind="title" required />
+    <label for="body">Body</label>
+    <textarea id="body" @bind="body" required></textarea>
+
+    @if (error is not null)
+    {
+        <p class="error" role="alert">@error</p>
+    }
+
+    <button type="submit" disabled="@saving">Publish post</button>
+</form>
+
+@code {
+    private string title = "";
+    private string body = "";
+    private string? error;
+    private bool saving;
+
+    private async Task CreatePostAsync()
+    {
+        AuthenticationState state = await Authentication.GetAuthenticationStateAsync();
+        if (!int.TryParse(state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int userId))
+        {
+            error = "Log in to publish a post.";
+            return;
+        }
+
+        saving = true;
+        error = null;
+
+        try
+        {
+            PostDto post = await Posts.AddPostAsync(new CreatePostDto
+            {
+                Title = title,
+                Body = body,
+                UserId = userId
+            });
+            Navigation.NavigateTo($"posts/{post.Id}");
+        }
+        catch (HttpRequestException exception)
+        {
+            error = exception.Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

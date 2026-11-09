@@ -1,0 +1,219 @@
+@page "/posts/{Id:int}"
+@inject IPostService Posts
+@inject IUserService Users
+@inject ICommentService Comments
+@inject AuthenticationStateProvider Authentication
+
+<PageTitle>@(post?.Title ?? "Post")</PageTitle>
+
+@if (loadError is not null)
+{
+    <h1>Post unavailable</h1>
+    <p class="error" role="alert">@loadError</p>
+}
+else if (post is null)
+{
+    <p>Loading post...</p>
+}
+else
+{
+    <h1>@post.Title</h1>
+    <p>By @GetUserName(post.UserId)</p>
+    <p class="body-text">@post.Body</p>
+
+    <AuthorizeView>
+        <Authorized>
+            @if (GetUserId(context.User) == post.UserId)
+            {
+                @if (editing)
+                {
+                    <form @onsubmit="SavePostAsync" @onsubmit:preventDefault>
+                        <label for="edit-title">Title</label>
+                        <input id="edit-title" @bind="editTitle" required />
+                        <label for="edit-body">Body</label>
+                        <textarea id="edit-body" @bind="editBody" required></textarea>
+                        <button type="submit" disabled="@savingPost">Save post</button>
+                        <button type="button" disabled="@savingPost" @onclick="CancelEdit">Cancel</button>
+                    </form>
+                }
+                else
+                {
+                    <button type="button" @onclick="StartEdit">Edit post</button>
+                }
+
+                @if (editError is not null)
+                {
+                    <p class="error" role="alert">@editError</p>
+                }
+            }
+        </Authorized>
+    </AuthorizeView>
+
+    <h2>Comments</h2>
+    @if (comments.Count == 0)
+    {
+        <p>No comments yet.</p>
+    }
+
+    @foreach (CommentDto comment in comments)
+    {
+        <article>
+            <strong>@GetUserName(comment.UserId)</strong>
+            <p class="body-text">@comment.Body</p>
+        </article>
+    }
+
+    <AuthorizeView>
+        <Authorized>
+            <form @onsubmit="AddCommentAsync" @onsubmit:preventDefault>
+                <label for="comment">Comment</label>
+                <textarea id="comment" @bind="commentBody" required></textarea>
+                @if (commentError is not null)
+                {
+                    <p class="error" role="alert">@commentError</p>
+                }
+                <button type="submit" disabled="@savingComment">Add comment</button>
+            </form>
+        </Authorized>
+        <NotAuthorized>
+            <p><a href="login">Log in</a> to add a comment.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private PostDto? post;
+    private List<UserDto> users = new List<UserDto>();
+    private List<CommentDto> comments = new List<CommentDto>();
+    private string? loadError;
+    private string commentBody = "";
+    private string? commentError;
+    private bool savingComment;
+    private bool editing;
+    private bool savingPost;
+    private string editTitle = "";
+    private string editBody = "";
+    private string? editError;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        post = null;
+        loadError = null;
+        commentBody = "";
+        commentError = null;
+        CancelEdit();
+
+        try
+        {
+            PostDto loadedPost = await Posts.GetPostAsync(Id);
+            users = await Users.GetUsersAsync();
+            comments = await Comments.GetCommentsAsync(loadedPost.Id);
+            post = loadedPost;
+        }
+        catch (HttpRequestException exception)
+        {
+            loadError = exception.Message;
+        }
+    }
+
+    private string GetUserName(int userId)
+    {
+        return users.Find(user => user.Id == userId)?.UserName ?? "Unknown user";
+    }
+
+    private static int? GetUserId(ClaimsPrincipal user)
+    {
+        return int.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int id) ? id : null;
+    }
+
+    private async Task AddCommentAsync()
+    {
+        AuthenticationState state = await Authentication.GetAuthenticationStateAsync();
+        int? userId = GetUserId(state.User);
+        if (post is null || userId is null)
+        {
+            return;
+        }
+
+        int postId = post.Id;
+        savingComment = true;
+        commentError = null;
+
+        try
+        {
+            CommentDto comment = await Comments.AddCommentAsync(postId, new CreateCommentDto
+            {
+                Body = commentBody,
+                UserId = userId.Value
+            });
+            if (post?.Id == postId)
+            {
+                comments.Add(comment);
+                commentBody = "";
+            }
+        }
+        catch (HttpRequestException exception)
+        {
+            commentError = exception.Message;
+        }
+        finally
+        {
+            savingComment = false;
+        }
+    }
+
+    private void StartEdit()
+    {
+        if (post is null)
+        {
+            return;
+        }
+
+        editTitle = post.Title;
+        editBody = post.Body;
+        editError = null;
+        editing = true;
+    }
+
+    private void CancelEdit()
+    {
+        editing = false;
+        editError = null;
+    }
+
+    private async Task SavePostAsync()
+    {
+        AuthenticationState state = await Authentication.GetAuthenticationStateAsync();
+        PostDto? currentPost = post;
+        if (currentPost is null || GetUserId(state.User) != currentPost.UserId)
+        {
+            return;
+        }
+
+        savingPost = true;
+        editError = null;
+
+        try
+        {
+            UpdatePostDto request = new UpdatePostDto { Title = editTitle.Trim(), Body = editBody };
+            await Posts.UpdatePostAsync(currentPost.Id, request);
+            if (post == currentPost)
+            {
+                currentPost.Title = request.Title;
+                currentPost.Body = request.Body;
+                editing = false;
+            }
+        }
+        catch (HttpRequestException exception)
+        {
+            editError = exception.Message;
+        }
+        finally
+        {
+            savingPost = false;
+        }
+    }
+}

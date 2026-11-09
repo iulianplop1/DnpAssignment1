@@ -1,0 +1,50 @@
+@page "/"
+@inject IPostService Posts
+@inject IUserService Users
+
+<PageTitle>Forum</PageTitle>
+<h1>Posts</h1>
+
+@if (error is not null)
+{
+    <p class="error" role="alert">@error</p>
+}
+else if (posts is null)
+{
+    <p>Loading posts...</p>
+}
+else if (posts.Count == 0)
+{
+    <p>There are no posts yet.</p>
+}
+else
+{
+    <ul>
+        @foreach (PostDto post in posts)
+        {
+            <li>
+                <a href="@($"posts/{post.Id}")">@post.Title</a>
+                <span>by @(users.Find(user => user.Id == post.UserId)?.UserName ?? "Unknown user")</span>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<PostDto>? posts;
+    private List<UserDto> users = new List<UserDto>();
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            users = await Users.GetUsersAsync();
+            posts = await Posts.GetPostsAsync();
+        }
+        catch (HttpRequestException exception)
+        {
+            error = exception.Message;
+        }
+    }
+}

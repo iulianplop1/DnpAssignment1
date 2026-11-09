@@ -1,0 +1,54 @@
+@page "/login"
+@inject AuthenticationStateProvider Authentication
+@inject NavigationManager Navigation
+
+<PageTitle>Log in</PageTitle>
+<h1>Log in</h1>
+
+<AuthorizeView>
+    <Authorized>
+        <p>You are signed in as @context.User.Identity?.Name.</p>
+    </Authorized>
+    <NotAuthorized>
+        <form @onsubmit="LoginAsync" @onsubmit:preventDefault>
+            <label for="user-name">User name</label>
+            <input id="user-name" autocomplete="username" @bind="userName" required />
+            <label for="password">Password</label>
+            <input id="password" type="password" autocomplete="current-password" @bind="password" required />
+
+            @if (error is not null)
+            {
+                <p class="error" role="alert">@error</p>
+            }
+
+            <button type="submit" disabled="@signingIn">Log in</button>
+        </form>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private string userName = "";
+    private string password = "";
+    private string? error;
+    private bool signingIn;
+
+    private async Task LoginAsync()
+    {
+        signingIn = true;
+        error = null;
+
+        try
+        {
+            await ((SimpleAuthProvider)Authentication).LoginAsync(userName, password);
+            Navigation.NavigateTo("/");
+        }
+        catch (HttpRequestException exception)
+        {
+            error = exception.Message;
+        }
+        finally
+        {
+            signingIn = false;
+        }
+    }
+}

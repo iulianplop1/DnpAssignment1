@@ -1,0 +1,32 @@
+@inherits LayoutComponentBase
+@inject AuthenticationStateProvider Authentication
+@inject NavigationManager Navigation
+
+<header>
+    <nav aria-label="Main navigation">
+        <a href="/">Forum</a>
+        <AuthorizeView>
+            <Authorized>
+                <a href="posts/new">New post</a>
+                <span>Signed in as @context.User.Identity?.Name</span>
+                <button type="button" @onclick="Logout">Log out</button>
+            </Authorized>
+            <NotAuthorized>
+                <a href="register">Create account</a>
+                <a href="login">Log in</a>
+            </NotAuthorized>
+        </AuthorizeView>
+    </nav>
+</header>
+
+<main>
+    @Body
+</main>
+
+@code {
+    private void Logout()
+    {
+        ((SimpleAuthProvider)Authentication).Logout();
+        Navigation.NavigateTo("/");
+    }
+}
