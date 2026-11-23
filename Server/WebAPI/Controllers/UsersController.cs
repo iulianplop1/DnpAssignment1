@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using ApiContracts;
 using Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -32,8 +33,8 @@ public class UsersController : ControllerBase
         }
 
         string userName = request.UserName.Trim();
-        bool nameTaken = userRepository.GetMany()
-            .Any(user => user.UserName.Equals(userName, StringComparison.OrdinalIgnoreCase));
+        List<User> users = await userRepository.GetMany().ToListAsync();
+        bool nameTaken = users.Any(user => user.UserName.Equals(userName, StringComparison.OrdinalIgnoreCase));
 
         if (nameTaken)
         {
@@ -58,8 +59,8 @@ public class UsersController : ControllerBase
         {
             User user = await userRepository.GetSingleAsync(id);
             string userName = request.UserName.Trim();
-            bool nameTaken = userRepository.GetMany()
-                .Any(other => other.Id != id && other.UserName.Equals(userName, StringComparison.OrdinalIgnoreCase));
+            List<User> users = await userRepository.GetMany().ToListAsync();
+            bool nameTaken = users.Any(other => other.Id != id && other.UserName.Equals(userName, StringComparison.OrdinalIgnoreCase));
 
             if (nameTaken)
             {
@@ -92,17 +93,16 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet]
-    public ActionResult<List<UserDto>> GetUsers([FromQuery] string? userNameContains = null)
+    public async Task<ActionResult<List<UserDto>>> GetUsers([FromQuery] string? userNameContains = null)
     {
-        IQueryable<User> users = userRepository.GetMany();
+        List<User> users = await userRepository.GetMany().OrderBy(user => user.Id).ToListAsync();
 
         if (!string.IsNullOrWhiteSpace(userNameContains))
         {
-            users = users.Where(user => user.UserName.Contains(userNameContains, StringComparison.OrdinalIgnoreCase));
+            users = users.Where(user => user.UserName.Contains(userNameContains, StringComparison.OrdinalIgnoreCase)).ToList();
         }
 
-        List<UserDto> dtos = users.OrderBy(user => user.Id)
-            .Select(user => ToDto(user)).ToList();
+        List<UserDto> dtos = users.Select(user => ToDto(user)).ToList();
         return Ok(dtos);
     }
 
@@ -114,8 +114,8 @@ public class UsersController : ControllerBase
             await userRepository.GetSingleAsync(id);
 
             // Keep posts and comments from referencing a user who no longer exists.
-            if (postRepository.GetMany().Any(post => post.UserId == id)
-                || commentRepository.GetMany().Any(comment => comment.UserId == id))
+            if (await postRepository.GetMany().AnyAsync(post => post.UserId == id)
+                || await commentRepository.GetMany().AnyAsync(comment => comment.UserId == id))
             {
                 return Conflict("Delete this user's posts and comments before deleting the user.");
             }

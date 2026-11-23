@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using ApiContracts;
 using Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -31,7 +32,7 @@ public class PostsController : ControllerBase
             return BadRequest("Title and body cannot be empty.");
         }
 
-        if (!userRepository.GetMany().Any(user => user.Id == request.UserId))
+        if (!await userRepository.GetMany().AnyAsync(user => user.Id == request.UserId))
         {
             return BadRequest("The author must be an existing user.");
         }
@@ -85,7 +86,7 @@ public class PostsController : ControllerBase
     }
 
     [HttpGet]
-    public ActionResult<List<PostDto>> GetPosts(
+    public async Task<ActionResult<List<PostDto>>> GetPosts(
         [FromQuery] string? titleContains = null,
         [FromQuery] int? userId = null)
     {
@@ -96,18 +97,18 @@ public class PostsController : ControllerBase
 
         IQueryable<Post> posts = postRepository.GetMany();
 
-        if (!string.IsNullOrWhiteSpace(titleContains))
-        {
-            posts = posts.Where(post => post.Title.Contains(titleContains, StringComparison.OrdinalIgnoreCase));
-        }
-
         if (userId.HasValue)
         {
             posts = posts.Where(post => post.UserId == userId.Value);
         }
 
-        List<PostDto> dtos = posts.OrderBy(post => post.Id)
-            .Select(post => ToDto(post)).ToList();
+        List<Post> results = await posts.OrderBy(post => post.Id).ToListAsync();
+        if (!string.IsNullOrWhiteSpace(titleContains))
+        {
+            results = results.Where(post => post.Title.Contains(titleContains, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
+        List<PostDto> dtos = results.Select(post => ToDto(post)).ToList();
         return Ok(dtos);
     }
 
@@ -118,7 +119,7 @@ public class PostsController : ControllerBase
         {
             await postRepository.GetSingleAsync(id);
 
-            if (commentRepository.GetMany().Any(comment => comment.PostId == id))
+            if (await commentRepository.GetMany().AnyAsync(comment => comment.PostId == id))
             {
                 return Conflict("Delete this post's comments before deleting the post.");
             }
@@ -146,7 +147,7 @@ public class PostsController : ControllerBase
         {
             await postRepository.GetSingleAsync(postId);
 
-            if (!userRepository.GetMany().Any(user => user.Id == request.UserId))
+            if (!await userRepository.GetMany().AnyAsync(user => user.Id == request.UserId))
             {
                 return BadRequest("The author must be an existing user.");
             }
@@ -188,7 +189,7 @@ public class PostsController : ControllerBase
                 comments = comments.Where(comment => comment.UserId == userId.Value);
             }
 
-            List<CommentDto> dtos = comments.OrderBy(comment => comment.Id)
+            List<CommentDto> dtos = (await comments.OrderBy(comment => comment.Id).ToListAsync())
                 .Select(comment => ToCommentDto(comment)).ToList();
             return Ok(dtos);
         }

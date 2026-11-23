@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using ApiContracts;
 using Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -52,7 +53,7 @@ public class CommentsController : ControllerBase
     }
 
     [HttpGet]
-    public ActionResult<List<CommentDto>> GetComments(
+    public async Task<ActionResult<List<CommentDto>>> GetComments(
         [FromQuery] int? userId = null,
         [FromQuery] int? postId = null)
     {
@@ -73,7 +74,7 @@ public class CommentsController : ControllerBase
             comments = comments.Where(comment => comment.PostId == postId.Value);
         }
 
-        List<CommentDto> dtos = comments.OrderBy(comment => comment.Id)
+        List<CommentDto> dtos = (await comments.OrderBy(comment => comment.Id).ToListAsync())
             .Select(comment => ToDto(comment)).ToList();
         return Ok(dtos);
     }

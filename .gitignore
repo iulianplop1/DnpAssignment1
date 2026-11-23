@@ -7,3 +7,8 @@ riderModule.iml
 users.json
 posts.json
 comments.json
+
+# Local SQLite database
+*.db
+*.db-shm
+*.db-wal
